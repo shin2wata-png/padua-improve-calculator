@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b6b68">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Padua IMPROVE">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="description" content="Padua Prediction ScoreとIMPROVE bleeding risk scoreの医師向け計算補助ツール">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>Padua / IMPROVE bleeding risk score 計算補助ツール</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #18202a;
+      --muted: #5f6b7a;
+      --line: #d9dee7;
+      --accent: #0b6b68;
+      --accent-strong: #084f4d;
+      --warn: #8a4f00;
+      --danger: #a12d2d;
+      --ok: #1e6b3a;
+      --soft: #eef7f6;
+      --focus: #f2b84b;
+      --shadow: 0 12px 32px rgba(24, 32, 42, 0.08);
+      color-scheme: light;
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, #edf4f4 0, #f6f7f9 280px),
+        var(--bg);
+      color: var(--ink);
+      line-height: 1.65;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: start;
+      padding: 10px 0 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.65rem, 3vw, 2.5rem);
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 800px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .version {
+      align-self: start;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      box-shadow: 0 6px 18px rgba(24, 32, 42, 0.06);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .score-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      min-height: 150px;
+    }
+
+    .score-card h2 {
+      margin: 0 0 6px;
+      font-size: 1.08rem;
+      letter-spacing: 0;
+    }
+
+    .score-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .score-number {
+      min-width: 112px;
+      text-align: center;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--accent-strong);
+    }
+
+    .score-number strong {
+      display: block;
+      font-size: 2.35rem;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .score-number span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .risk-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      margin-top: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #fafbfc;
+      color: var(--muted);
+      font-weight: 650;
+      font-size: 0.9rem;
+    }
+
+    .risk-label.high {
+      border-color: rgba(161, 45, 45, 0.28);
+      background: #fff1f1;
+      color: var(--danger);
+    }
+
+    .risk-label.low {
+      border-color: rgba(30, 107, 58, 0.25);
+      background: #eef8f1;
+      color: var(--ok);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 18px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 9px 13px;
+      cursor: pointer;
+      font-weight: 650;
+      min-height: 42px;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-strong);
+    }
+
+    .btn:focus-visible,
+    input:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .calculators {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    section.calculator {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 1.22rem;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .items {
+      display: grid;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      min-height: 62px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+    }
+
+    .item:hover {
+      background: #fbfdfd;
+    }
+
+    .item input {
+      width: 22px;
+      height: 22px;
+      margin: 3px 0 0;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .item-text {
+      min-width: 0;
+    }
+
+    .item-title {
+      display: block;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .item-note {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .points {
+      min-width: 54px;
+      text-align: right;
+      color: var(--accent-strong);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .breakdown {
+      padding: 16px 18px 18px;
+      background: #fbfcfd;
+    }
+
+    .breakdown h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      letter-spacing: 0;
+    }
+
+    .breakdown-list {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .breakdown-list li + li {
+      margin-top: 4px;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .notice,
+    .references {
+      margin-top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 0 8px 22px rgba(24, 32, 42, 0.05);
+    }
+
+    .notice {
+      border-left: 5px solid var(--warn);
+    }
+
+    .notice strong {
+      color: #6f3d00;
+    }
+
+    .notice p,
+    .references p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .references h2 {
+      margin: 0 0 10px;
+      font-size: 1.08rem;
+      letter-spacing: 0;
+    }
+
+    .references ol {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .references li + li {
+      margin-top: 8px;
+    }
+
+    footer {
+      margin: 18px 0 0;
+      padding: 16px 18px;
+      border-radius: 8px;
+      background: #18202a;
+      color: #ffffff;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .summary,
+      .calculators {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .version {
+        justify-self: start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .app {
+        width: min(100% - 20px, 1180px);
+        padding-top: 16px;
+      }
+
+      .score-card {
+        grid-template-columns: 1fr;
+        padding: 15px;
+      }
+
+      .score-number {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .item {
+        grid-template-columns: auto 1fr;
+        gap: 10px;
+        padding: 13px 14px;
+      }
+
+      .points {
+        grid-column: 2;
+        text-align: left;
+      }
+
+      .section-head,
+      .breakdown,
+      .notice,
+      .references {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    手計算確認用テストケース
+
+    1. Padua: 全項目未選択 => 合計 0 点、分類「低リスク（4点未満）」。
+    2. Padua: 活動性がん 3 点 + 肥満 1 点 => 合計 4 点、分類「高リスク（4点以上）」。
+    3. Padua: 既往VTE 3 点 + 70歳以上 1 点 + 心不全/呼吸不全 1 点 => 合計 5 点。
+    4. IMPROVE bleeding: 全項目未選択 => 合計 0 点、分類「低リスク（7点未満）」。
+    5. IMPROVE bleeding: 男性 1 点 + 40-84歳 1.5 点 + GFR 30-59 1 点 => 合計 3.5 点。
+    6. IMPROVE bleeding: 活動性胃十二指腸潰瘍 4.5 点 + 入院前3か月以内の出血 4 点 => 合計 8.5 点、分類「高リスク（7点以上）」。
+    7. IMPROVE bleeding: 85歳以上 3.5 点 + 血小板 <50 x 10^9/L 4 点 + ICU/CCU 2.5 点 => 合計 10 点。
+    8. IMPROVE bleeding: 40-84歳を選択後、85歳以上を選択 => 40-84歳は自動解除され、年齢加点は 3.5 点のみ。
+    9. IMPROVE bleeding: GFR 30-59を選択後、GFR <30を選択 => GFR 30-59は自動解除され、GFR加点は 2.5 点のみ。
+  -->
+  <main class="app">
+    <header>
+      <div>
+        <h1>Padua / IMPROVE bleeding risk score 計算補助ツール</h1>
+        <p class="subtitle">
+          入院中の内科系患者におけるVTEリスク評価と出血リスク評価を、個人識別情報なしで計算します。
+          患者氏名・ID・生年月日などの入力欄はなく、この画面内で完結し、入力内容は外部サーバーへ送信されません。
+        </p>
+      </div>
+      <div class="version" aria-label="バージョン">Version 1.1.1</div>
+    </header>
+
+    <div class="summary" aria-live="polite">
+      <article class="score-card">
+        <div>
+          <h2>Padua Prediction Score</h2>
+          <p>合計点と加点内訳を表示します。</p>
+          <div id="paduaRisk" class="risk-label low">低リスク（4点未満）</div>
+        </div>
+        <div class="score-number">
+          <strong id="paduaTotal">0</strong>
+          <span>点</span>
+        </div>
+      </article>
+
+      <article class="score-card">
+        <div>
+          <h2>IMPROVE Bleeding Risk Score</h2>
+          <p>合計点と加点内訳を表示します。</p>
+          <div id="improveRisk" class="risk-label low">低リスク（7点未満）</div>
+        </div>
+        <div class="score-number">
+          <strong id="improveTotal">0</strong>
+          <span>点</span>
+        </div>
+      </article>
+    </div>
+
+    <div class="controls">
+      <button class="btn" type="button" id="resetPadua">Paduaをクリア</button>
+      <button class="btn" type="button" id="resetImprove">IMPROVE bleedingをクリア</button>
+      <button class="btn" type="button" id="resetAll">すべてクリア</button>
+    </div>
+
+    <div class="calculators">
+      <section class="calculator" aria-labelledby="paduaHeading">
+        <div class="section-head">
+          <h2 id="paduaHeading">Padua Prediction Score</h2>
+          <p>4点以上を高リスク、4点未満を低リスクとして表示します。</p>
+        </div>
+        <div id="paduaItems" class="items">
+          <label class="item" for="padua-cancer">
+            <input type="checkbox" id="padua-cancer" data-group="padua" data-points="3" data-label="活動性がん">
+            <span class="item-text">
+              <span class="item-title">活動性がん</span>
+              <span class="item-note">局所または遠隔転移、または直近6か月以内の化学療法・放射線療法など</span>
+            </span>
+            <span class="points">+3点</span>
+          </label>
+          <label class="item" for="padua-vte">
+            <input type="checkbox" id="padua-vte" data-group="padua" data-points="3" data-label="VTEの既往">
+            <span class="item-text">
+              <span class="item-title">VTEの既往</span>
+              <span class="item-note">表在静脈血栓症を除く</span>
+            </span>
+            <span class="points">+3点</span>
+          </label>
+          <label class="item" for="padua-mobility">
+            <input type="checkbox" id="padua-mobility" data-group="padua" data-points="3" data-label="可動性低下">
+            <span class="item-text">
+              <span class="item-title">可動性低下</span>
+              <span class="item-note">少なくとも3日間のベッド上安静など</span>
+            </span>
+            <span class="points">+3点</span>
+          </label>
+          <label class="item" for="padua-thrombophilia">
+            <input type="checkbox" id="padua-thrombophilia" data-group="padua" data-points="3" data-label="既知の血栓性素因">
+            <span class="item-text">
+              <span class="item-title">既知の血栓性素因</span>
+              <span class="item-note">先天性または後天性血栓性素因</span>
+            </span>
+            <span class="points">+3点</span>
+          </label>
+          <label class="item" for="padua-trauma-surgery">
+            <input type="checkbox" id="padua-trauma-surgery" data-group="padua" data-points="2" data-label="最近1か月以内の外傷または手術">
+            <span class="item-text">
+              <span class="item-title">最近1か月以内の外傷または手術</span>
+              
+            </span>
+            <span class="points">+2点</span>
+          </label>
+          <label class="item" for="padua-age">
+            <input type="checkbox" id="padua-age" data-group="padua" data-points="1" data-label="70歳以上">
+            <span class="item-text">
+              <span class="item-title">70歳以上</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="padua-cardioresp">
+            <input type="checkbox" id="padua-cardioresp" data-group="padua" data-points="1" data-label="心不全または呼吸不全">
+            <span class="item-text">
+              <span class="item-title">心不全または呼吸不全</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="padua-mi-stroke">
+            <input type="checkbox" id="padua-mi-stroke" data-group="padua" data-points="1" data-label="急性心筋梗塞または虚血性脳卒中">
+            <span class="item-text">
+              <span class="item-title">急性心筋梗塞または虚血性脳卒中</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="padua-infection-rheum">
+            <input type="checkbox" id="padua-infection-rheum" data-group="padua" data-points="1" data-label="急性感染症またはリウマチ性疾患">
+            <span class="item-text">
+              <span class="item-title">急性感染症またはリウマチ性疾患</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="padua-obesity">
+            <input type="checkbox" id="padua-obesity" data-group="padua" data-points="1" data-label="肥満">
+            <span class="item-text">
+              <span class="item-title">肥満</span>
+              <span class="item-note">BMI 30 kg/m²以上</span>
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="padua-hormone">
+            <input type="checkbox" id="padua-hormone" data-group="padua" data-points="1" data-label="ホルモン療法中">
+            <span class="item-text">
+              <span class="item-title">ホルモン療法中</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+        </div>
+        <div class="breakdown">
+          <h3>加点内訳</h3>
+          <ol id="paduaBreakdown" class="breakdown-list"></ol>
+          <div id="paduaEmpty" class="empty">加点項目はありません。</div>
+        </div>
+      </section>
+
+      <section class="calculator" aria-labelledby="improveHeading">
+        <div class="section-head">
+          <h2 id="improveHeading">IMPROVE Bleeding Risk Score</h2>
+          <p>7点以上を高リスク、7点未満を低リスクとして表示します。</p>
+        </div>
+        <div id="improveItems" class="items">
+          <label class="item" for="improve-ulcer">
+            <input type="checkbox" id="improve-ulcer" data-group="improve" data-points="4.5" data-label="活動性胃十二指腸潰瘍">
+            <span class="item-text">
+              <span class="item-title">活動性胃十二指腸潰瘍</span>
+              
+            </span>
+            <span class="points">+4.5点</span>
+          </label>
+          <label class="item" for="improve-prior-bleed">
+            <input type="checkbox" id="improve-prior-bleed" data-group="improve" data-points="4" data-label="入院前3か月以内の出血">
+            <span class="item-text">
+              <span class="item-title">入院前3か月以内の出血</span>
+              
+            </span>
+            <span class="points">+4点</span>
+          </label>
+          <label class="item" for="improve-platelets">
+            <input type="checkbox" id="improve-platelets" data-group="improve" data-points="4" data-label="血小板数 &lt;50 x 10⁹/L">
+            <span class="item-text">
+              <span class="item-title">血小板数 &lt;50 x 10⁹/L</span>
+              
+            </span>
+            <span class="points">+4点</span>
+          </label>
+          <label class="item" for="improve-age-85">
+            <input type="checkbox" id="improve-age-85" data-group="improve" data-points="3.5" data-label="85歳以上" data-exclusive-group="age">
+            <span class="item-text">
+              <span class="item-title">85歳以上</span>
+              <span class="item-note">40-84歳とは同時選択できません</span>
+            </span>
+            <span class="points">+3.5点</span>
+          </label>
+          <label class="item" for="improve-hepatic">
+            <input type="checkbox" id="improve-hepatic" data-group="improve" data-points="2.5" data-label="肝不全">
+            <span class="item-text">
+              <span class="item-title">肝不全</span>
+              <span class="item-note">INR &gt;1.5</span>
+            </span>
+            <span class="points">+2.5点</span>
+          </label>
+          <label class="item" for="improve-gfr-30">
+            <input type="checkbox" id="improve-gfr-30" data-group="improve" data-points="2.5" data-label="GFR &lt;30 mL/min/m²" data-exclusive-group="gfr">
+            <span class="item-text">
+              <span class="item-title">GFR &lt;30 mL/min/m²</span>
+              <span class="item-note">GFR 30-59とは同時選択できません</span>
+            </span>
+            <span class="points">+2.5点</span>
+          </label>
+          <label class="item" for="improve-icu">
+            <input type="checkbox" id="improve-icu" data-group="improve" data-points="2.5" data-label="ICUまたはCCU入室">
+            <span class="item-text">
+              <span class="item-title">ICUまたはCCU入室</span>
+              
+            </span>
+            <span class="points">+2.5点</span>
+          </label>
+          <label class="item" for="improve-cvc">
+            <input type="checkbox" id="improve-cvc" data-group="improve" data-points="2" data-label="中心静脈カテーテル">
+            <span class="item-text">
+              <span class="item-title">中心静脈カテーテル</span>
+              
+            </span>
+            <span class="points">+2点</span>
+          </label>
+          <label class="item" for="improve-rheumatic">
+            <input type="checkbox" id="improve-rheumatic" data-group="improve" data-points="2" data-label="リウマチ性疾患">
+            <span class="item-text">
+              <span class="item-title">リウマチ性疾患</span>
+              
+            </span>
+            <span class="points">+2点</span>
+          </label>
+          <label class="item" for="improve-cancer">
+            <input type="checkbox" id="improve-cancer" data-group="improve" data-points="2" data-label="活動性がん">
+            <span class="item-text">
+              <span class="item-title">活動性がん</span>
+              <span class="item-note">直近6か月以内の活動性悪性腫瘍など</span>
+            </span>
+            <span class="points">+2点</span>
+          </label>
+          <label class="item" for="improve-age-40-84">
+            <input type="checkbox" id="improve-age-40-84" data-group="improve" data-points="1.5" data-label="40-84歳" data-exclusive-group="age">
+            <span class="item-text">
+              <span class="item-title">40-84歳</span>
+              <span class="item-note">85歳以上とは同時選択できません</span>
+            </span>
+            <span class="points">+1.5点</span>
+          </label>
+          <label class="item" for="improve-male">
+            <input type="checkbox" id="improve-male" data-group="improve" data-points="1" data-label="男性">
+            <span class="item-text">
+              <span class="item-title">男性</span>
+              
+            </span>
+            <span class="points">+1点</span>
+          </label>
+          <label class="item" for="improve-gfr-30-59">
+            <input type="checkbox" id="improve-gfr-30-59" data-group="improve" data-points="1" data-label="GFR 30-59 mL/min/m²" data-exclusive-group="gfr">
+            <span class="item-text">
+              <span class="item-title">GFR 30-59 mL/min/m²</span>
+              <span class="item-note">GFR &lt;30とは同時選択できません</span>
+            </span>
+            <span class="points">+1点</span>
+          </label>
+        </div>
+        <div class="breakdown">
+          <h3>加点内訳</h3>
+          <ol id="improveBreakdown" class="breakdown-list"></ol>
+          <div id="improveEmpty" class="empty">加点項目はありません。</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="notice">
+      <p>
+        <strong>注意:</strong>
+        本ツールはスコア計算と分類表示のみを目的とします。薬物的DVT予防の開始・中止・薬剤選択・用量は提示しません。
+        IMPROVE bleeding risk scoreの年齢区分とGFR区分は、それぞれ該当する1項目のみを選択してください。
+      </p>
+    </div>
+
+    <section class="references" aria-labelledby="referencesHeading">
+      <h2 id="referencesHeading">引用文献</h2>
+      <ol>
+        <li>Barbar S, Noventa F, Rossetto V, et al. A risk assessment model for the identification of hospitalized medical patients at risk for venous thromboembolism: the Padua Prediction Score. <em>J Thromb Haemost.</em> 2010;8(11):2450-2457.</li>
+        <li>Decousus H, Tapson VF, Bergmann JF, et al. Factors at admission associated with bleeding risk in medical patients: findings from the IMPROVE investigators. <em>Chest.</em> 2011;139(1):69-79.</li>
+        <li>Rosenberg D, Eichorn A, Alarcon M, et al. External validation of the risk assessment model of the International Medical Prevention Registry on Venous Thromboembolism. <em>Chest.</em> 2014;146(2):372-380.</li>
+      </ol>
+    </section>
+
+    <footer>
+      医師向け計算補助ツールであり、最終判断は担当医が行う
+    </footer>
+  </main>
+
+  <script>
+    function formatPoints(value) {
+      return Math.floor(value) === value ? String(value) : value.toFixed(1);
+    }
+
+    function getItems(groupName) {
+      return Array.prototype.slice.call(document.querySelectorAll('input[data-group="' + groupName + '"]'));
+    }
+
+    function applyExclusiveChoice(input) {
+      var exclusiveGroup = input.getAttribute("data-exclusive-group");
+      if (!input.checked || !exclusiveGroup) {
+        return;
+      }
+
+      var peers = document.querySelectorAll(
+        'input[data-group="' + input.getAttribute("data-group") + '"][data-exclusive-group="' + exclusiveGroup + '"]'
+      );
+      Array.prototype.forEach.call(peers, function(peer) {
+        if (peer !== input) {
+          peer.checked = false;
+        }
+      });
+    }
+
+    function updateGroup(groupName, threshold, highText, lowText) {
+      var total = 0;
+      var checked = [];
+      getItems(groupName).forEach(function(input) {
+        if (input.checked) {
+          checked.push(input);
+          total += Number(input.getAttribute("data-points"));
+        }
+      });
+
+      var totalElement = document.getElementById(groupName + "Total");
+      var riskElement = document.getElementById(groupName + "Risk");
+      var breakdownElement = document.getElementById(groupName + "Breakdown");
+      var emptyElement = document.getElementById(groupName + "Empty");
+      var high = total >= threshold;
+
+      totalElement.textContent = formatPoints(total);
+      riskElement.textContent = high ? highText : lowText;
+      riskElement.classList.toggle("high", high);
+      riskElement.classList.toggle("low", !high);
+
+      breakdownElement.innerHTML = "";
+      checked.forEach(function(input) {
+        var li = document.createElement("li");
+        li.textContent = input.getAttribute("data-label") + ": +" + formatPoints(Number(input.getAttribute("data-points"))) + "点";
+        breakdownElement.appendChild(li);
+      });
+      emptyElement.hidden = checked.length > 0;
+    }
+
+    function updateAll() {
+      updateGroup("padua", 4, "高リスク（4点以上）", "低リスク（4点未満）");
+      updateGroup("improve", 7, "高リスク（7点以上）", "低リスク（7点未満）");
+    }
+
+    function resetGroup(groupName) {
+      getItems(groupName).forEach(function(input) {
+        input.checked = false;
+      });
+      updateAll();
+    }
+
+    document.addEventListener("change", function(event) {
+      var groupName = event.target.getAttribute("data-group");
+      if (groupName) {
+        applyExclusiveChoice(event.target);
+        updateAll();
+      }
+    });
+
+    document.getElementById("resetPadua").addEventListener("click", function() {
+      resetGroup("padua");
+    });
+    document.getElementById("resetImprove").addEventListener("click", function() {
+      resetGroup("improve");
+    });
+    document.getElementById("resetAll").addEventListener("click", function() {
+      resetGroup("padua");
+      resetGroup("improve");
+    });
+
+    updateAll();
+
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      navigator.serviceWorker.register("./service-worker.js").catch(function() {});
+    }
+  </script>
+</body>
+</html>

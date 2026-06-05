@@ -1,4 +1,4 @@
-const CACHE_NAME = "padua-improve-calculator-v1.1.1";
+const CACHE_NAME = "padua-improve-calculator-v1.2.0";
 const ASSETS = [
   "./padua-improve-calculator.html",
   "./index.html",
